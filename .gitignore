@@ -1,2 +1,6 @@
 .env
 venv/
+__pycache__/
+claude-json/
+dataset/
+only-entities-and-relationships/

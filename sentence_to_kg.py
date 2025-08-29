@@ -1,10 +1,16 @@
 import os
 import warnings
-
 import torch
-original_load = torch.load
+import stanza
+from neo4j import GraphDatabase
+from dotenv import load_dotenv
+import logging
+from nltk.stem import WordNetLemmatizer
+import nltk
+from collections import defaultdict
 
 # The patched_load() function is a fix for PyTorch 2.6+ weights_only issue.
+original_load = torch.load
 
 def patched_load(*args, **kwargs):
     if 'weights_only' not in kwargs:
@@ -14,13 +20,6 @@ def patched_load(*args, **kwargs):
 torch.load = patched_load
 
 warnings.filterwarnings("ignore", message=".*weights_only.*")
-
-import stanza
-from neo4j import GraphDatabase
-from dotenv import load_dotenv
-import logging
-from nltk.stem import WordNetLemmatizer
-import nltk
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -37,10 +36,11 @@ class SentenceToKG:
         print("📦 Downloading NLTK data...")
         try:
             nltk.download('wordnet', quiet=True)
-            print("✅ NLTK wordnet downloaded successfully")
+            nltk.download('punkt', quiet=True)
+            print("✅ NLTK data downloaded successfully")
         except Exception as e:
-            logger.warning(f"NLTK wordnet download failed: {e}, but continuing...")
-            print("⚠️ NLTK wordnet download failed, but continuing...")
+            logger.warning(f"NLTK download failed: {e}, but continuing...")
+            print("⚠️ NLTK download failed, but continuing...")
         
         # Initialize Stanza NLP pipeline
         print("🧠 Initializing Stanza NLP model (this may take a while)...")
@@ -58,12 +58,9 @@ class SentenceToKG:
         except Exception as e:
             logger.error(f"Failed to initialize Stanza pipeline: {e}")
             print(f"❌ Failed to initialize Stanza pipeline: {e}")
-            # alternative approaches if the first one fails
             try:
                 print("   - Trying alternative approach...")
                 logger.info("Trying alternative approach...")
-                # Force download fresh models
-                print("   - Downloading fresh Stanza models...")
                 stanza.download('en')
                 print("   - Creating pipeline with fresh models...")
                 self.nlp = stanza.Pipeline(
@@ -123,7 +120,6 @@ class SentenceToKG:
         """
         Get the best lemma for a word, with fallback strategies.
         """
-        # Some common lemmatization errors I faced. Will probably remove this in the future
         lemma_override_dict = {
             "hugge": "hug", "hugged": "hug",
             "ate": "eat", "ran": "run",
@@ -135,16 +131,23 @@ class SentenceToKG:
         if stanza_lemma in lemma_override_dict:
             return lemma_override_dict[stanza_lemma]
         
-        # Use NLTK's WordNet lemmatizer for verbs
-        if pos_tag.startswith('V') and self.lemmatizer:  # If it's a verb and lemmatizer exists
+        if pos_tag.startswith('V') and self.lemmatizer:
             try:
                 nltk_lemma = self.lemmatizer.lemmatize(word_text, pos='v')
-                if nltk_lemma != stanza_lemma and len(nltk_lemma) < 6:  # Simple heuristic
+                if nltk_lemma != stanza_lemma and len(nltk_lemma) < 6:
                     return nltk_lemma
             except:
-                pass  # Fall back to stanza lemma if NLTK fails
+                pass
         
         return stanza_lemma
+    
+    def get_conjuncts(self, word, sent_words):
+        """Recursively get all conjuncts for a given word."""
+        conjuncts = [word]
+        for w in sent_words:
+            if w.head == word.id and w.deprel == 'conj':
+                conjuncts.extend(self.get_conjuncts(w, sent_words))
+        return conjuncts
     
     def extract_triples(self, sentence):
         """
@@ -162,42 +165,71 @@ class SentenceToKG:
         triples = []
         
         for sent in doc.sentences:
-            # Find the root verb (main action)
-            root_verb = None
-            for word in sent.words:
-                if word.head == 0 and word.upos.startswith('V'):  # It's a root verb
-                    root_verb = word
-                    break
+            words = sent.words
             
-            if not root_verb:
-                logger.warning(f"No root verb found in sentence: {sentence}")
-                continue
+            # Find all verbs in the sentence
+            verbs = [word for word in words if word.upos.startswith('V')]
             
-            # Get subjects and objects related to this root verb
-            subjects = []
-            objects = []
-            
-            for word in sent.words:
-                if word.head == root_verb.id:
-                    if word.deprel in ['nsubj', 'nsubj:pass']:  # nominal subject
-                        subjects.append(word)
-                    elif word.deprel == 'obj':  # direct object
-                        objects.append(word)
-            
-            verb_lemma = self.get_verb_lemma(
-                root_verb.text, 
-                root_verb.lemma, 
-                root_verb.upos
-            ).upper()
-            
-            # triples for each subject-object pair
-            for subj in subjects:
-                for obj in objects:
-                    triples.append((
-                        subj.text,      # Subject
-                        verb_lemma,     # Relation
-                        obj.text        # Object
-                    ))
+            for verb in verbs:
+                subjects = []
+                objects = []
+                prep_phrases = defaultdict(list)
+                
+                # Get all words related to this verb
+                for word in words:
+                    if word.head == verb.id:
+                        if word.deprel in ['nsubj', 'nsubj:pass']:
+                            subjects.extend(self.get_conjuncts(word, words))
+                        elif word.deprel in ['obj', 'iobj']:
+                            objects.extend(self.get_conjuncts(word, words))
+                        elif word.deprel == 'obl':  # oblique (prepositional phrases)
+                            # Find the preposition
+                            prep = None
+                            for w in words:
+                                if w.head == word.id and w.deprel == 'case':
+                                    prep = w.text
+                                    break
+                            if prep:
+                                prep_phrases[prep].extend(self.get_conjuncts(word, words))
+                
+                # Remove duplicates while preserving order
+                subjects = list(dict.fromkeys(subjects))
+                objects = list(dict.fromkeys(objects))
+                
+                verb_lemma = self.get_verb_lemma(
+                    verb.text, 
+                    verb.lemma, 
+                    verb.upos
+                ).upper()
+                
+                # Create triples for each subject-object pair
+                for subj in subjects:
+                    for obj in objects:
+                        triples.append((
+                            subj.text,      # Subject
+                            verb_lemma,     # Relation
+                            obj.text        # Object
+                        ))
+                
+                # Create triples for prepositional phrases
+                for prep, objs in prep_phrases.items():
+                    for subj in subjects:
+                        for obj in objs:
+                            triples.append((
+                                subj.text,          # Subject
+                                f"{verb_lemma}_{prep.upper()}",  # Relation with preposition
+                                obj.text            # Object
+                            ))
+                
+                # Handle cases where there are objects but no explicit subject
+                # (e.g., in passive voice or when subject is implied)
+                if not subjects and objects:
+                    for obj in objects:
+                        triples.append((
+                            "UNKNOWN",      # Placeholder for unknown subject
+                            verb_lemma,     # Relation
+                            obj.text        # Object
+                        ))
         
         logger.info(f"Extracted {len(triples)} triple(s) from sentence")
         return triples
@@ -216,17 +248,21 @@ class SentenceToKG:
         
         with self.driver.session() as session:
             for subject, relation, obj in triples:
+                # Skip placeholder subjects
+                if subject == "UNKNOWN":
+                    continue
+                    
                 # MERGE to avoid duplicates
                 query = """
                 MERGE (s:Entity {name: $subject})
                 MERGE (o:Entity {name: $object})
-                MERGE (s)-[r:%s]->(o)
+                MERGE (s)-[r:RELATION {type: $relation}]->(o)
                 SET r.last_updated = timestamp()
                 RETURN s, r, o
-                """ % relation
+                """
                 
                 try:
-                    result = session.run(query, subject=subject, object=obj)
+                    result = session.run(query, subject=subject, object=obj, relation=relation)
                     count = result.consume().counters.relationships_created
                     if count > 0:
                         logger.info(f"Created relationship: ({subject})-[:{relation}]->({obj})")
@@ -265,6 +301,19 @@ def main():
         print("Type 'quit' to exit the application.")
         print("=" * 60)
         
+        # Test with the example sentence
+        test_sentence = "Mira's phone buzzed in her pocket as she stepped onto the deserted platform at midnight."
+        print(f"\nTesting with sentence: '{test_sentence}'")
+        
+        triples = kg_builder.process_sentence(test_sentence)
+        
+        if triples:
+            print("\n✅ Extracted Triples:")
+            for i, (s, r, o) in enumerate(triples, 1):
+                print(f"  {i}. ({s}) -[{r}]-> ({o})")
+        else:
+            print("❌ No triples could be extracted from this sentence.")
+            
         while True:
             try:
                 sentence = input("\nEnter a sentence to add to the knowledge graph: ").strip()

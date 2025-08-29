@@ -1,0 +1,37 @@
+Detective Sam Rivers stared at the computer screen in the Millbrook Police Station, trying to make sense of the digital breadcrumbs scattered across his monitor. For a town of 3,000 people, a cryptocurrency theft seemed as out of place as a spaceship landing on Main Street.
+"Sam, the victim's here," called Officer Jenny Walsh from the front desk.
+Tom Bradley shuffled in, his weathered hands clutching a manila folder. At sixty-five, the retired farmer looked like he'd rather be anywhere else than discussing digital currency.
+"Mr. Bradley, you reported someone stole your Bitcoin?"
+Tom nodded grimly. "My son convinced me to invest my retirement savings. Said Bitcoin was the future. Three hundred thousand dollars, gone overnight."
+Sam whistled low. "That's serious money. How did you manage your account?"
+"That's the thing—I barely understood it. My neighbor's kid, Alex Morrison, he's good with computers. Been helping me with the transactions, showing me how to check the balance and such."
+"Alex Morrison?" Sam knew the family. The eighteen-year-old was headed to MIT on a computer science scholarship. "Anyone else have access?"
+"Well, there's Janet Kim at the bank. She helped me set up the initial purchase through some exchange thing. And my son Michael knows the password—he visits every Sunday, checks on things."
+Sam made notes. "I'll need to examine your computer and speak with these people."
+An hour later, Sam sat in the Morrisons' living room. Alex, a lanky teenager with nervous energy, fidgeted with his phone while his mother, Carol, served coffee.
+"Alex, Mr. Bradley says you've been helping him with his Bitcoin account."
+"Yeah, poor guy was totally lost. I'd go over twice a week, help him navigate the wallet, explain the market fluctuations."
+"You understand how these transactions work?"
+Alex brightened. "Absolutely. I've been mining crypto since I was fifteen. Tom's setup was pretty basic—a standard hot wallet connected to Coinbase. Not the most secure, but simple for a beginner."
+"Could someone steal his coins remotely?"
+"Sure, if they had his private key or wallet password. Or if they got him to download malware, install a keylogger..." Alex paused. "Wait, actually, something was weird last week."
+Sam leaned forward. "What kind of weird?"
+"Tom said he'd gotten some official-looking email about wallet security updates. Asked me if he should click the link. I told him absolutely not—classic phishing attempt."
+"Did he click it anyway?"
+"He said he didn't, but..." Alex shrugged.
+Next, Sam visited Millbrook Savings Bank. Janet Kim, a meticulous woman in her forties, pulled out a thick file.
+"Mr. Bradley's been a client for thirty years," she said. "He was very nervous about the cryptocurrency purchase. Asked me to write down every step."
+"Anyone else ask about his account?"
+Janet hesitated. "Well, his son Michael has power of attorney. He's authorized to discuss Tom's finances."
+"Michael been in recently?"
+"Last Thursday. Said he was worried about his father's online security, wanted to review the account setup."
+Sam drove to Michael Bradley's house on the outskirts of town. Michael, a forty-year-old construction worker facing his own financial troubles, met him on the porch.
+"Dad's told you about the theft?" Michael asked, not meeting Sam's eyes.
+"I'm investigating all angles. You knew his wallet password?"
+"Course. Someone had to help him navigate that stuff."
+Sam pulled out his phone, showing Michael a blockchain transaction record. "This shows the Bitcoin was transferred last Friday at 2:17 AM. Your father's computer logs show someone accessed the wallet from his home network at exactly that time."
+Michael's face went pale.
+"Here's what I think happened," Sam continued. "You knew your dad's password, knew his routine. You used his spare key to get in while he was sleeping, transferred the Bitcoin to your own wallet, then deleted the transaction history from his browser."
+Michael slumped against the porch railing. "I was going to pay it back. The contracting business is failing, I've got creditors calling every day..."
+"Michael Bradley, you're under arrest."
+As Sam drove back to the station, he reflected on how crime evolved but human motives remained depressingly constant. Even in the digital age, it usually came down to family, money, and desperation.
