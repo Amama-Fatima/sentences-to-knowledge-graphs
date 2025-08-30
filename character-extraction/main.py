@@ -33,8 +33,8 @@ class Config:
     # Modal Configuration
     GPU_TYPE = "A100"
     MEMORY_MB = 32768
-    TIMEOUT_SECONDS = 600
-    MIN_CONTAINERS = 1
+    TIMEOUT_SECONDS = 900
+    MIN_CONTAINERS = 0
     
     # Application Settings
     APP_NAME = "character-extraction"
